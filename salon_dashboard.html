@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>サロン 月次レポート</title>
+<style>
+  :root {
+    --green: #0F6E56;
+    --blue: #185FA5;
+    --red: #E24B4A;
+    --amber: #BA7517;
+    --teal: #1D9E75;
+    --bg: #F5F4F0;
+    --surface: #FFFFFF;
+    --border: rgba(0,0,0,0.08);
+    --text: #1a1a1a;
+    --text-muted: #6B6B6B;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP',sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .site-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 20px; position: sticky; top: 0; z-index: 100; }
+  .header-inner { max-width: 700px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 56px; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-dot { width: 10px; height: 10px; background: var(--green); border-radius: 50%; }
+  .logo-text { font-size: 16px; font-weight: 700; color: var(--text); }
+  .logo-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .last-updated { font-size: 11px; color: var(--text-muted); }
+
+  .container { max-width: 700px; margin: 0 auto; padding: 20px 16px 80px; }
+
+  .month-bar { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+  .month-bar-label { font-size: 12px; color: var(--text-muted); margin-right: 4px; }
+  .mtab { flex-shrink: 0; padding: 7px 18px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-size: 13px; color: var(--text-muted); transition: all .15s; font-family: inherit; font-weight: 500; }
+  .mtab.active { background: var(--green); color: #fff; border-color: transparent; }
+  .mtab:hover:not(.active) { border-color: var(--green); color: var(--green); }
+  .month-badge { display: inline-block; background: var(--green); color: #fff; font-size: 9px; padding: 1px 5px; border-radius: 8px; margin-left: 4px; font-weight: 600; vertical-align: middle; }
+  .mtab.active .month-badge { background: rgba(255,255,255,0.3); color: #fff; }
+
+  .member-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .member-row { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: all .18s; }
+  .member-row:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); transform: translateY(-1px); }
+  .member-row.selected { border-color: var(--green); border-width: 2px; }
+
+  .member-main { display: flex; align-items: center; gap: 12px; padding: 14px 16px 10px; }
+  .member-body { flex: 1; min-width: 0; }
+  .member-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .member-name { font-size: 15px; font-weight: 700; color: var(--text); }
+  .member-salon { font-size: 11px; color: var(--text-muted); }
+  .member-sales { font-size: 12px; color: var(--text-muted); margin-top: 3px; font-weight: 500; }
+  .member-right { text-align: right; flex-shrink: 0; }
+  .member-sales-big { font-size: 18px; font-weight: 700; color: var(--green); line-height: 1; }
+  .member-sales-lbl { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+
+  .member-bar-area { padding: 0 16px 10px; }
+  .member-bar-bg { height: 4px; background: #eee; border-radius: 2px; overflow: hidden; }
+  .member-bar-fill { height: 100%; border-radius: 2px; transition: width .6s ease; }
+
+  .member-cta-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; border: none; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .15s; white-space: nowrap; }
+  .member-cta-btn.open-btn { background: var(--green); color: #fff; }
+  .member-cta-btn.close-btn { background: #e0e0e0; color: var(--text-muted); }
+  .member-cta-btn:hover { opacity: .85; }
+
+  .detail-panel { border-top: 1px solid var(--border); display: none; }
+  .detail-panel.open { display: block; }
+
+  .detail-hero { padding: 16px; background: linear-gradient(135deg, #f0faf6 0%, #fff 100%); border-bottom: 1px solid var(--border); }
+  .hero-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .hero-name { font-size: 17px; font-weight: 700; color: var(--text); }
+  .hero-salon { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .hero-sales-block { text-align: right; }
+  .hero-sales { font-size: 28px; font-weight: 700; color: var(--green); line-height: 1; }
+  .hero-sales-lbl { font-size: 11px; color: var(--text-muted); }
+
+  .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  @media(max-width:480px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+  .metric-card { background: rgba(255,255,255,.85); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; text-align: center; }
+  .metric-val { font-size: 15px; font-weight: 700; color: var(--text); }
+  .metric-lbl { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+  .dtab-row { display: flex; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; background: #fff; }
+  .dtab-row::-webkit-scrollbar { display: none; }
+  .dtab { flex-shrink: 0; padding: 12px 16px; font-size: 13px; color: var(--text-muted); cursor: pointer; border: none; background: transparent; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all .15s; font-family: inherit; font-weight: 500; }
+  .dtab.active { color: var(--green); border-bottom-color: var(--green); font-weight: 700; }
+
+  .panel-body { padding: 18px 16px; background: #fff; }
+
+  .action-bars { display: flex; flex-direction: column; gap: 14px; }
+  .ab-row { display: grid; grid-template-columns: 88px 1fr; gap: 10px; align-items: center; }
+  .ab-label { font-size: 12px; color: var(--text-muted); text-align: right; font-weight: 500; }
+  .ab-right { display: flex; flex-direction: column; gap: 4px; }
+  .ab-track { position: relative; height: 22px; background: #f0f0f0; border-radius: 6px; overflow: hidden; }
+  .ab-bar-top { position: absolute; top:0; left:0; height:100%; border-radius:6px; opacity:.12; background:#185FA5; }
+  .ab-bar-you { position: absolute; top:0; left:0; height:100%; border-radius:6px; display:flex; align-items:center; padding-left:8px; transition: width .5s ease; }
+  .ab-bar-label { font-size:10px; font-weight:700; color:#fff; white-space:nowrap; }
+  .ab-meta { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; }
+  .ab-myval { font-size:12px; font-weight:600; color:var(--text); }
+  .ab-topval { font-size:11px; color:var(--text-muted); }
+  .ab-gap-pill { font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; }
+
+  .advice-list { display:flex; flex-direction:column; gap:12px; }
+  .advice-card { border-radius:var(--radius-sm); padding:14px 16px; border-left:4px solid; }
+  .advice-card.weak { background:#fff5f5; border-left-color:var(--red); }
+  .advice-card.mid  { background:#fffbf0; border-left-color:var(--amber); }
+  .advice-card.good { background:#f0faf6; border-left-color:var(--teal); }
+  .advice-tag { font-size:11px; font-weight:700; margin-bottom:5px; }
+  .advice-card.weak .advice-tag { color:var(--red); }
+  .advice-card.mid  .advice-tag { color:var(--amber); }
+  .advice-card.good .advice-tag { color:var(--teal); }
+  .advice-action-name { font-size:14px; font-weight:700; color:var(--text); margin-bottom:6px; }
+  .advice-text { font-size:13px; color:var(--text); line-height:1.75; }
+  .advice-numbers { font-size:11px; color:var(--text-muted); margin-top:6px; display:flex; gap:12px; flex-wrap:wrap; }
+
+  .loading { text-align:center; padding:60px 20px; color:var(--text-muted); font-size:14px; }
+  .loading-dot { display:inline-block; width:8px; height:8px; background:var(--green); border-radius:50%; margin:0 3px; animation:bounce .6s infinite alternate; }
+  .loading-dot:nth-child(2){animation-delay:.2s}
+  .loading-dot:nth-child(3){animation-delay:.4s}
+  @keyframes bounce{to{transform:translateY(-6px)}}
+  .error-box { background:#fff5f5; border:1px solid #fcc; border-radius:var(--radius-sm); padding:16px; font-size:13px; color:#c0392b; margin-bottom:16px; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-dot"></div>
+      <div>
+        <div class="logo-text">サロン月次レポート</div>
+        <div class="logo-sub">メンバー別アクション分析</div>
+      </div>
+    </div>
+    <div class="last-updated" id="lastUpdated"></div>
+  </div>
+</header>
+
+<div class="container">
+  <div id="loadingState" class="loading">
+    <div style="margin-bottom:12px">データを読み込み中</div>
+    <span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>
+  </div>
+  <div id="errorState" class="error-box" style="display:none"></div>
+  <div id="mainContent" style="display:none">
+    <div class="month-bar" id="monthBar"></div>
+    <div class="member-list" id="memberList"></div>
+  </div>
+</div>
+
+<script>
+const SHEET_ID = '1XxU5F1U5EWF87IQ6_uNyb25hCPp6irl0BnX0apiGvyE';
+
+const AXES = [
+  {k:'sales',    label:'売上',       target:1000000, fmt:v=>'¥'+v.toLocaleString()},
+  {k:'insta',    label:'インスタ投稿', target:15,     fmt:v=>v+'回'},
+  {k:'newCust',  label:'新規顧客',    target:5,       fmt:v=>v+'名'},
+  {k:'course',   label:'コース成約数', target:50,     fmt:v=>v+'%'},
+  {k:'revisit',  label:'次回予約率',   target:70,     fmt:v=>v+'%'},
+];
+
+const TIPS = {
+  sales:{
+    weak: '売上が目安を大きく下回っています。客単価アップのメニュー見直しや、既存顧客へのリピート促進を優先しましょう。',
+    mid:  '売上は目安に近いです。新規獲得とリピート率向上を合わせて取り組むと達成できそうです。',
+    good: '売上は目安をクリアしています！さらなる高みを目指して単価アップも検討しましょう。',
+  },
+  insta:{
+    weak: 'インスタ投稿が少ないです。週3〜4本を目標に、施術事例・お客様の声・日常を発信しましょう。',
+    mid:  'インスタ投稿はもう少しです。毎日1投稿を意識してコンスタントな発信を心がけましょう。',
+    good: 'インスタ投稿は十分です！内容の質（ビフォーアフター・ストーリーズ活用）も磨いていきましょう。',
+  },
+  newCust:{
+    weak: '新規顧客が少ないです。インスタDM・紹介制度・体験メニューなど新規獲得の施策を強化しましょう。',
+    mid:  '新規顧客はもう少しで目安達成です。既存顧客への紹介促進を強化してみましょう。',
+    good: '新規顧客獲得は好調です！初回からリピートにつながる体験を提供しましょう。',
+  },
+  course:{
+    weak: 'コース成約率が低いです。カウンセリングの質向上と、コースの魅力・メリットの伝え方を見直しましょう。',
+    mid:  'コース成約率はもう一歩です。体験後のフォローアップとクロージングのタイミングを意識しましょう。',
+    good: 'コース成約率は良好です！事前教育とカウンセリングの質が高い証拠です。',
+  },
+  revisit:{
+    weak: '次回予約率が低いです。施術後に次回予約を必ず提案する習慣をつけましょう。特典や限定オファーも効果的です。',
+    mid:  '次回予約率はもう少しです。施術中のコミュニケーションで次回への期待感を高めましょう。',
+    good: '次回予約率は優秀です！お客様との信頼関係が築けている証拠です。',
+  },
+};
+
+const PALETTES = ['#0F6E56','#185FA5','#D85A30','#7F77DD','#BA7517','#993556','#3B6D11','#085041','#0F6E56'];
+
+let allData = [];
+let curMonth = '';
+let openStates = {};
+
+function toReportMonth(dateStr) {
+  const m = dateStr.match(/(\d{4})-(\d{2})/);
+  if (!m) return null;
+  let y = parseInt(m[1]), mo = parseInt(m[2]);
+  mo -= 1;
+  if (mo === 0) { mo = 12; y -= 1; }
+  return `${y}-${String(mo).padStart(2,'0')}`;
+}
+
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  return lines.map(line => {
+    const cols = []; let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '"') { inQ = !inQ; }
+      else if (line[i] === ',' && !inQ) { cols.push(cur); cur = ''; }
+      else { cur += line[i]; }
+    }
+    cols.push(cur);
+    return cols;
+  });
+}
+
+function num(v) {
+  if (v === null || v === undefined) return 0;
+  const s = String(v).replace(/[^0-9.]/g, '');
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+async function fetchData() {
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('データの取得に失敗しました');
+  const text = await res.text();
+  const rows = parseCSV(text);
+  if (rows.length < 2) throw new Error('データが見つかりませんでした');
+
+  // 7行目以降（インデックス6以降）のデータを使用
+  allData = rows.slice(6).map(r => {
+    const month = toReportMonth(r[2] || '');
+    const nickname = (r[8] || r[6] || '').trim();
+    if (!nickname || !month) return null;
+    return {
+      name:     nickname,
+      salon:    (r[7] || '').trim(),
+      month,
+      sales:    num(r[10]),
+      insta:    num(r[11]),
+      newCust:  num(r[12]),
+      course:   num(r[13]),
+      revisit:  num(r[15]),
+    };
+  }).filter(d => d && d.name && d.month);
+
+  document.getElementById('lastUpdated').textContent = '最終更新: ' + new Date().toLocaleDateString('ja-JP');
+}
+
+function getMonths() { return [...new Set(allData.map(d=>d.month))].sort().reverse(); }
+
+function byMonth(m) {
+  return allData.filter(d=>d.month===m).sort((a,b)=>b.sales-a.sales);
+}
+
+function getLastMonth() {
+  const now = new Date();
+  let y = now.getFullYear(), mo = now.getMonth();
+  if (mo === 0) { mo = 12; y -= 1; }
+  return `${y}-${String(mo).padStart(2,'0')}`;
+}
+
+function fmtMonth(m) {
+  const [y, mo] = m.split('-');
+  return `${y}年${parseInt(mo)}月`;
+}
+
+function renderMonthBar() {
+  const months = getMonths();
+  const lastMonth = getLastMonth();
+  document.getElementById('monthBar').innerHTML =
+    '<span class="month-bar-label">期間：</span>' +
+    months.map(m => {
+      const isLast = m === lastMonth;
+      const badge = isLast ? ' <span class="month-badge">先月</span>' : '';
+      return `<button class="mtab${m===curMonth?' active':''}" onclick="setMonth('${m}')">${fmtMonth(m)}${badge}</button>`;
+    }).join('');
+}
+
+function renderMembers(data) {
+  const topSales = Math.max(...data.map(d => d.sales), 1);
+  document.getElementById('memberList').innerHTML = data.map((d, i) => {
+    const col = PALETTES[i % PALETTES.length];
+    const pct = Math.round((d.sales / topSales) * 100);
+    const isOpen = openStates[d.name + d.month];
+    const btnLabel = isOpen ? '▲ 閉じる' : '📊 活動内容を見る';
+    const btnCls = isOpen ? 'close-btn' : 'open-btn';
+    const detailOpen = isOpen ? ' open' : '';
+    return `<div class="member-row${isOpen?' selected':''}" id="mrow-${i}">
+      <div class="member-main">
+        <div class="member-body">
+          <div class="member-name-row">
+            <span class="member-name">${d.name}</span>
+            ${d.salon ? `<span class="member-salon">${d.salon}</span>` : ''}
+            <button class="member-cta-btn ${btnCls}" onclick="toggleDetail('${d.name}','${d.month}',${i})">${btnLabel}</button>
+          </div>
+          <div class="member-sales">売上 ¥${d.sales.toLocaleString()}</div>
+        </div>
+        <div class="member-right">
+          <div class="member-sales-big">¥${Math.round(d.sales/10000)}万</div>
+          <div class="member-sales-lbl">先月売上</div>
+        </div>
+      </div>
+      <div class="member-bar-area">
+        <div class="member-bar-bg"><div class="member-bar-fill" style="width:${pct}%;background:${col}"></div></div>
+      </div>
+      <div class="detail-panel${detailOpen}" id="detail-${i}">
+        <div class="detail-hero">
+          <div class="hero-row">
+            <div>
+              <div class="hero-name">${d.name}</div>
+              ${d.salon ? `<div class="hero-salon">${d.salon}</div>` : ''}
+            </div>
+            <div class="hero-sales-block">
+              <div class="hero-sales">¥${d.sales.toLocaleString()}</div>
+              <div class="hero-sales-lbl">先月売上</div>
+            </div>
+          </div>
+          <div class="metrics-grid">
+            <div class="metric-card"><div class="metric-val">${d.insta}回</div><div class="metric-lbl">インスタ投稿</div></div>
+            <div class="metric-card"><div class="metric-val">${d.newCust}名</div><div class="metric-lbl">新規顧客</div></div>
+            <div class="metric-card"><div class="metric-val">${d.course}%</div><div class="metric-lbl">コース成約率</div></div>
+            <div class="metric-card"><div class="metric-val">${d.revisit}%</div><div class="metric-lbl">次回予約率</div></div>
+          </div>
+        </div>
+        <div class="dtab-row" id="dtabs-${i}">
+          <button class="dtab active" onclick="switchTab(${i},'bars',this)">📋 細かい行動内容</button>
+          <button class="dtab" onclick="switchTab(${i},'advice',this)">💡 次のアクション</button>
+        </div>
+        <div class="panel-body">
+          <div id="tab-bars-${i}"><div class="action-bars" id="bars-${i}"></div></div>
+          <div id="tab-advice-${i}" style="display:none"><div class="advice-list" id="advice-${i}"></div></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // 開いているパネルを再描画
+  data.forEach((d, i) => {
+    if (openStates[d.name + d.month]) {
+      buildBars(data, d, i);
+      buildAdvice(data, d, i);
+    }
+  });
+}
+
+function buildBars(data, member, idx) {
+  document.getElementById(`bars-${idx}`).innerHTML = AXES.map(a => {
+    const myVal = member[a.k] || 0;
+    const itemTop = Math.max(...data.map(d => d[a.k] || 0));
+    const itemTopName = data.find(d => (d[a.k]||0) === itemTop)?.name || '';
+    const myPct = Math.min(Math.round((myVal / a.target) * 100), 100);
+    const ratio = myVal / a.target;
+    const isGood = ratio >= 1;
+    const isMid  = ratio >= 0.6 && ratio < 1;
+    const barCol = isGood ? '#1D9E75' : isMid ? '#BA7517' : '#E24B4A';
+    const pillBg = isGood ? '#f0faf6' : isMid ? '#fff8e1' : '#fff0f0';
+    const gapLabel = isGood ? '良好' : isMid ? '伸び代あり' : '要強化';
+    return `<div class="ab-row">
+      <div class="ab-label">${a.label}</div>
+      <div class="ab-right">
+        <div class="ab-track">
+          <div class="ab-bar-top"></div>
+          <div class="ab-bar-you" style="width:${myPct}%;background:${barCol}">
+            ${myPct>15?`<span class="ab-bar-label">${myPct}%</span>`:''}
+          </div>
+        </div>
+        <div class="ab-meta">
+          <span class="ab-myval">${a.fmt(myVal)}</span>
+          <span class="ab-topval">目安: ${a.fmt(a.target)}　トップ: ${a.fmt(itemTop)}（${itemTopName}）</span>
+          <span class="ab-gap-pill" style="background:${pillBg};color:${barCol}">${gapLabel}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function buildAdvice(data, member, idx) {
+  const sorted = AXES.map(a => {
+    const myVal = member[a.k] || 0;
+    const ratio = myVal / a.target;
+    const itemTop = Math.max(...data.map(d => d[a.k] || 0));
+    const itemTopName = data.find(d => (d[a.k]||0) === itemTop)?.name || '';
+    return {a, myVal, ratio, itemTop, itemTopName, gap: 1 - Math.min(ratio, 1)};
+  }).sort((x, y) => y.gap - x.gap);
+
+  document.getElementById(`advice-${idx}`).innerHTML = sorted.slice(0, 4).map(({a, myVal, ratio, itemTop, itemTopName}) => {
+    const isGood = ratio >= 1;
+    const isMid  = ratio >= 0.6 && ratio < 1;
+    const level  = isGood ? 'good' : isMid ? 'mid' : 'weak';
+    const tag    = isGood ? '✅ 良好' : isMid ? '📈 伸び代あり' : '⚡ 要強化';
+    return `<div class="advice-card ${level}">
+      <div class="advice-tag">${tag}</div>
+      <div class="advice-action-name">${a.label}</div>
+      <div class="advice-text">${TIPS[a.k][level]}</div>
+      <div class="advice-numbers">
+        <span>📌 現在: ${a.fmt(myVal)}</span>
+        <span>🎯 目安: ${a.fmt(a.target)}</span>
+        <span>🏆 トップ: ${a.fmt(itemTop)}（${itemTopName}）</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function switchTab(idx, id, btn) {
+  ['bars','advice'].forEach(t => {
+    document.getElementById(`tab-${t}-${idx}`).style.display = t===id?'block':'none';
+  });
+  document.querySelectorAll(`#dtabs-${idx} .dtab`).forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function toggleDetail(name, month, idx) {
+  const key = name + month;
+  const panel = document.getElementById(`detail-${idx}`);
+  const row   = document.getElementById(`mrow-${idx}`);
+  const btn   = row.querySelector('.member-cta-btn');
+  const data  = byMonth(curMonth);
+  const member = data.find(d=>d.name===name);
+
+  if (openStates[key]) {
+    delete openStates[key];
+    panel.classList.remove('open');
+    row.classList.remove('selected');
+    btn.textContent = '📊 活動内容を見る';
+    btn.className = 'member-cta-btn open-btn';
+  } else {
+    openStates[key] = true;
+    panel.classList.add('open');
+    row.classList.add('selected');
+    btn.textContent = '▲ 閉じる';
+    btn.className = 'member-cta-btn close-btn';
+    buildBars(data, member, idx);
+    buildAdvice(data, member, idx);
+    setTimeout(() => panel.scrollIntoView({behavior:'smooth', block:'nearest'}), 100);
+  }
+}
+
+function setMonth(m) {
+  curMonth = m;
+  openStates = {};
+  renderMonthBar();
+  renderMembers(byMonth(m));
+}
+
+async function init() {
+  try {
+    await fetchData();
+    const months = getMonths();
+    const lastMonth = getLastMonth();
+    curMonth = months.includes(lastMonth) ? lastMonth : months[0];
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('mainContent').style.display  = 'block';
+    renderMonthBar();
+    renderMembers(byMonth(curMonth));
+  } catch(e) {
+    document.getElementById('loadingState').style.display = 'none';
+    const err = document.getElementById('errorState');
+    err.style.display = 'block';
+    err.textContent = 'エラー: ' + e.message + '　スプレッドシートの共有設定を「リンクを知っている全員が閲覧可能」にしてください。';
+  }
+}
+
+init();
+</script>
+</body>
+</html>
